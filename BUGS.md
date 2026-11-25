@@ -9,6 +9,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 | [BUG-001](#bug-001-time-never-slows-down) | Time never slows down: swapped arguments to `TimeScaleDriver.update` | Critical | Fixed |
 | [BUG-002](#bug-002-replay-hand-bob-uses-distance-from-the-origin) | Replay hand bob uses distance from the world origin instead of distance walked | Minor | Open |
 | [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Fixed |
+| [BUG-004](#bug-004-horizontal-mouse-look-is-reversed) | Horizontal mouse look is reversed: moving the mouse left turns right | Major | Fixed |
 
 > Since the move to Vite (PART 2), the code lives in `src/`. Each entry gives the original `index.html` line (commit `953aa7c`) and, where known, the new file and line.
 
@@ -124,3 +125,37 @@ if (index <= 0)
 ```
 
 **Applied** in `src/ui/ui.ts` (`Ui.isUnlocked`). I checked it in the browser after clearing local storage: LEVELS shows 1-1 unlocked and 1-2 still locked, and PLAY starts 1-1 with its title card and no console errors.
+
+---
+
+## BUG-004: Horizontal mouse look is reversed
+
+- **Severity:** Major. The game is playable, but aiming is reversed horizontally.
+- **Status:** Fixed in the commit "Fix BUG-004: horizontal mouse look turned the wrong way"
+- **Found in:** `953aa7c` (reported by the user while playing)
+- **Where:** `index.html:6095` (`PlayerController.look`). After the move: `src/sim/player-controller.ts`
+
+### What happens
+While playing, moving the mouse left turns the camera right, and moving it right turns it left. The gamepad's right stick is reversed the same way, because it feeds into the same mouse-delta value. Looking up and down is correct.
+
+### Cause
+```js
+this.yaw += input.mouseDx * s.sensitivity;
+```
+
+The game's yaw convention gives a forward direction of `[-sin yaw, 0, -cos yaw]` (`dirFromYawPitch`, `Camera.forward`), so a *larger* yaw turns the view *left*. Adding the mouse's X movement means that moving the mouse right (a positive `mouseDx`) turns left.
+
+### How to reproduce
+1. Start any level and capture the mouse.
+2. Move the mouse to the right. Expected: the view turns right. Actual: it turns left.
+
+### Fix
+Subtract instead of add:
+
+```js
+this.yaw -= input.mouseDx * s.sensitivity;
+```
+
+**Applied** in `src/sim/player-controller.ts`, with a comment explaining the sign. The viewmodel's sway (`-mouseDx`) already assumed the correct direction, so the hands now lag the right way when you turn.
+
+Added `src/sim/player-controller.test.ts`: moving the mouse right turns the view toward the starting right direction, moving it left turns away from it, and pitch follows the Y-invert setting. With the old `+=` line, the two direction tests fail; with the fix, they pass. Not checked by playing, because the browser pane I test in can't capture the mouse.
