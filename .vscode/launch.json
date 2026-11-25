@@ -1,0 +1,29 @@
+{
+  // Pick a configuration in the Run and Debug view, then press F5.
+  // Both open Chrome (WebGPU) with the VS Code debugger attached, so breakpoints
+  // set in src/**/*.ts bind through source maps. Stopping the debug session
+  // also stops the server.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Dev server (Vite, hot reload)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "vite: dev server",
+      "postDebugTask": "stop servers",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Production build (vite build + preview)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4173",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "vite: preview production build",
+      "postDebugTask": "stop servers",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ]
+}

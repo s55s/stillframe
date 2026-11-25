@@ -1,0 +1,51 @@
+{
+  // Tasks used by launch.json. The two server tasks run in the background;
+  // the problem matcher's begins/ends patterns tell VS Code when the server is
+  // ready, so the debugger only opens the browser once the URL is being served.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "vite: dev server",
+      "type": "npm",
+      "script": "dev",
+      "isBackground": true,
+      // Plain output, so the ready patterns below are not split by colour codes.
+      "options": { "env": { "NO_COLOR": "1" } },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activeBegins": true, "beginsPattern": "VITE", "endsPattern": "Local" }
+      }
+    },
+    {
+      "label": "vite: build",
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "vite: preview production build",
+      "type": "npm",
+      "script": "preview",
+      "dependsOn": "vite: build",
+      "isBackground": true,
+      // Plain output, so the ready patterns below are not split by colour codes.
+      "options": { "env": { "NO_COLOR": "1" } },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activeBegins": true, "beginsPattern": "VITE|Local", "endsPattern": "Local" }
+      }
+    },
+    {
+      "label": "stop servers",
+      "type": "shell",
+      "command": "echo ${input:terminateAll}",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "terminateAll", "type": "command", "command": "workbench.action.tasks.terminate", "args": "terminateAll" }
+  ]
+}
