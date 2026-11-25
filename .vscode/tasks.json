@@ -2,15 +2,22 @@
   // Tasks used by launch.json. The two server tasks run in the background;
   // the problem matcher's begins/ends patterns tell VS Code when the server is
   // ready, so the debugger only opens the browser once the URL is being served.
+  //
+  // On Windows the tasks run through cmd.exe, not PowerShell: with PowerShell's
+  // default "Restricted" execution policy, `npm` resolves to npm.ps1 and is
+  // blocked ("running scripts is disabled on this system").
   "version": "2.0.0",
   "tasks": [
     {
       "label": "vite: dev server",
-      "type": "npm",
-      "script": "dev",
+      "type": "shell",
+      "command": "npm run dev",
       "isBackground": true,
       // Plain output, so the ready patterns below are not split by colour codes.
       "options": { "env": { "NO_COLOR": "1" } },
+      "windows": {
+        "options": { "env": { "NO_COLOR": "1" }, "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] } }
+      },
       "problemMatcher": {
         "owner": "vite",
         "pattern": { "regexp": "^__never_matches__$" },
@@ -19,19 +26,24 @@
     },
     {
       "label": "vite: build",
-      "type": "npm",
-      "script": "build",
+      "type": "shell",
+      "command": "npm run build",
       "group": "build",
+      "windows": {
+        "options": { "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] } }
+      },
       "problemMatcher": ["$tsc"]
     },
     {
       "label": "vite: preview production build",
-      "type": "npm",
-      "script": "preview",
+      "type": "shell",
+      "command": "npm run preview",
       "dependsOn": "vite: build",
       "isBackground": true,
-      // Plain output, so the ready patterns below are not split by colour codes.
       "options": { "env": { "NO_COLOR": "1" } },
+      "windows": {
+        "options": { "env": { "NO_COLOR": "1" }, "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] } }
+      },
       "problemMatcher": {
         "owner": "vite",
         "pattern": { "regexp": "^__never_matches__$" },
