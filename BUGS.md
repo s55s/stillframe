@@ -8,7 +8,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 |---|---|---|---|
 | [BUG-001](#bug-001-time-never-slows-down) | Time never slows down: swapped arguments to `TimeScaleDriver.update` | Critical | Open |
 | [BUG-002](#bug-002-replay-hand-bob-uses-distance-from-the-origin) | Replay hand bob uses distance from the world origin instead of distance walked | Minor | Open |
-| [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Open |
+| [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Fixed |
 
 > Since the move to Vite (PART 2), the code lives in `src/`. Each entry gives the original `index.html` line (commit `953aa7c`) and, where known, the new file and line.
 
@@ -84,7 +84,7 @@ Accumulate distance walked during the replay: add the distance between consecuti
 ## BUG-003: Every level is locked on a fresh save
 
 - **Severity:** Critical. The game can't be played at all from a new save.
-- **Status:** Open
+- **Status:** Fixed in the commit "Fix BUG-003: first level is always unlocked"
 - **Found in:** `953aa7c` (found while checking the Vite build in PART 2)
 - **Where:** `index.html:3717` (`Ui.isUnlocked`). After the move: `src/ui/ui.ts:325`
 
@@ -117,3 +117,5 @@ Treat the first level as always unlocked:
 if (index <= 0)
   return true;
 ```
+
+**Applied** in `src/ui/ui.ts` (`Ui.isUnlocked`). I checked it in the browser after clearing local storage: LEVELS shows 1-1 unlocked and 1-2 still locked, and PLAY starts 1-1 with its title card and no console errors.

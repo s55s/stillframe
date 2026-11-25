@@ -322,8 +322,9 @@ export class Ui {
       });
     });
   }
-  isUnlocked(index) {
-    if (index < 0)
+  /** A level is playable once the level before it is cleared; the first level always is. */
+  isUnlocked(index: number) {
+    if (index <= 0)
       return true;
     const prev = this.levels[index - 1];
     return !!prev && !!this.save.levels[prev.id]?.cleared;
