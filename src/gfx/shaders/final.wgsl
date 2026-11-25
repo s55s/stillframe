@@ -13,10 +13,20 @@ fn aces(x : vec3f) -> vec3f {
   return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3f(0.0), vec3f(1.0));
 }
 
-fn grainHash(p : vec2f) -> f32 {
-  let q = fract(p * vec2f(123.34, 456.21));
-  let r = q + dot(q, q + 45.32);
-  return fract(r.x * r.y);
+// PCG integer hash. It works on whole pixel coordinates and a frame counter, so it
+// stays uniform however long the game runs. The previous float hash was fed growing
+// time values, lost precision, and collapsed into flat blotches after a few minutes.
+fn pcg(v : u32) -> u32 {
+  let s = v * 747796405u + 2891336453u;
+  let w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+  return (w >> 22u) ^ w;
+}
+
+// Uniform noise in [0, 1) for one pixel in one frame.
+fn grainNoise(pixel : vec2f, time : f32) -> f32 {
+  let frame = u32(time * 60.0);
+  let h = pcg(u32(pixel.x) + pcg(u32(pixel.y) + pcg(frame)));
+  return f32(h) / 4294967296.0;
 }
 
 @fragment
@@ -55,9 +65,12 @@ fn fsFinal(fin : FullOut) -> @location(0) vec4f {
   let threatPulse = smoothstep(0.0, 0.3, abs(wave));
   mapped *= 1.0 - post.danger.x * threatPulse;
 
-  let g = grainHash(fin.clipPos.xy + vec2f(post.camera.z * 61.0, post.camera.z * 17.0)) - 0.5;
-  mapped += vec3f(g * post.grade.w);
+  var encoded = pow(clamp(mapped, vec3f(0.0), vec3f(1.0)), vec3f(1.0 / 2.2));
 
-  let encoded = pow(clamp(mapped, vec3f(0.0), vec3f(1.0)), vec3f(1.0 / 2.2));
+  // Film grain is added after gamma encoding, so it's equally strong in dark and bright
+  // areas. Added before encoding, the pow() above amplified it several times in
+  // near-black areas, which make up most of this game's image.
+  let g = grainNoise(fin.clipPos.xy, post.camera.z) - 0.5;
+  encoded = clamp(encoded + vec3f(g * post.grade.w), vec3f(0.0), vec3f(1.0));
   return vec4f(encoded, 1.0);
 }

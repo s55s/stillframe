@@ -10,6 +10,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 | [BUG-002](#bug-002-replay-hand-bob-uses-distance-from-the-origin) | Replay hand bob uses distance from the world origin instead of distance walked | Minor | Fixed |
 | [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Fixed |
 | [BUG-004](#bug-004-horizontal-mouse-look-is-reversed) | Horizontal mouse look is reversed: moving the mouse left turns right | Major | Fixed |
+| [BUG-005](#bug-005-film-grain-grows-into-screen-covering-noise) | Film grain grows into screen-covering noise, worst while time is frozen | Major | Fixed |
 
 > Since the move to Vite (PART 2), the code lives in `src/`. Each entry gives the original `index.html` line (commit `953aa7c`) and, where known, the new file and line.
 
@@ -165,3 +166,37 @@ this.yaw -= input.mouseDx * s.sensitivity;
 **Applied** in `src/sim/player-controller.ts`, with a comment explaining the sign. The viewmodel's sway (`-mouseDx`) already assumed the correct direction, so the hands now lag the right way when you turn.
 
 Added `src/sim/player-controller.test.ts`: moving the mouse right turns the view toward the starting right direction, moving it left turns away from it, and pitch follows the Y-invert setting. With the old `+=` line, the two direction tests fail; with the fix, they pass. Not checked by playing, because the browser pane I test in can't capture the mouse.
+
+---
+
+## BUG-005: Film grain grows into screen-covering noise
+
+- **Severity:** Major. It's visual, but it can make the screen unreadable.
+- **Status:** Fixed in the commit "Fix BUG-005: stable film grain, added after gamma"
+- **Found in:** `953aa7c` (reported by the user while playing)
+- **Where:** `index.html:1086` (`grainHash`) and `index.html:1127` (where grain is applied), in the `final` shader. After the move: `src/gfx/shaders/final.wgsl`
+
+### Intended or not?
+**Partly intended.** When time freezes, `Game.updatePost` deliberately strengthens a "still frame" look: `freeze = 1 - timeScale` raises grain (0.025 → 0.055), chromatic aberration (up to 0.6), colour loss and vignette. The Reduce Motion setting turns grain and aberration off, which shows they're a designed feature. These strengths are subtle. Noise that covers the screen isn't intended; it comes from the two defects below. The frozen-time audio drone is a low sine hum (41 and 62 Hz), not the "sizzle".
+
+### What happens
+When the player stops, dark areas fill with bright, fizzing speckle. After a few minutes of play, the noise turns into large flickering blotches that can cover the whole screen.
+
+### Cause
+1. **The hash loses precision over time.** The grain uses `fract(p * vec2f(123.34, 456.21))` on `pixel + time * (61, 17)`, in 32-bit floats. As real time grows, the inputs become too large for `fract` to keep any precision. Emulating the shader in 32-bit floats on a 64×64 patch:
+
+   | Real time | Distinct noise values (of 4096 pixels) |
+   |---|---|
+   | 5 s | 958 |
+   | 60 s | 403 |
+   | 5 min | 10 (flat blotches) |
+   | 20 min | 1 (a constant) |
+
+2. **Grain is added before gamma encoding.** `mapped += g * grain` runs before `pow(…, 1/2.2)`. Near black, that pow amplifies small values hugely: in a pixel at 0.01 linear, the grain comes out about 6 times stronger than at mid-grey, and in pure black a +0.0275 grain value becomes 0.19 on screen. This game's image is mostly near-black, so the grain looks like sizzle instead of the subtle texture its strengths suggest. Freezing time doubles the grain strength, which is why it appears "when I stop".
+
+### Fix
+- Replaced the float hash with a PCG integer hash of the whole-pixel coordinate and a frame counter (`u32(time * 60)`). In the same emulation it stays uniform at every time tested (about 985 of 4096 distinct values, spread 0.289, which is ideal for uniform noise), including after 24 hours, and it changes every frame.
+- Grain is now added after gamma encoding, so it's equally strong at every brightness.
+- The grain and aberration strengths are unchanged, so the intended frozen look stays.
+
+Checked in the browser: the shader compiles with no warnings, and the title screen (which uses the frozen look at 0.6 strength) shows fine, even grain in its dark areas. Not checked during a long play session, because playing needs mouse capture that the browser pane I test in can't provide.
