@@ -22,6 +22,16 @@ describe('PlayerController.look', () => {
     expect(turnTowardRight(-100)).toBeLessThan(0);
   });
 
+  it('records the distance walked in each frame, for the replay hand bob (BUG-002)', () => {
+    const player = new PlayerController();
+    player.reset([10, 0, 10], 0);
+    player.stride = 3.25;
+    const frame = player.toFrame(false, false, false);
+    expect(frame.stride).toBe(3.25);
+    // Not the distance from the world origin, which is what replays used before the fix.
+    expect(frame.stride).not.toBeCloseTo(Math.hypot(frame.pos[0], frame.pos[2]));
+  });
+
   it('looks up when the mouse moves up, unless Y is inverted', () => {
     const player = new PlayerController();
     player.look({ mouseDx: 0, mouseDy: -100 }, 1 / 60, settings);

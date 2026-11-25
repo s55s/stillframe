@@ -457,7 +457,7 @@ export class Game {
       const pState = world.player;
       if (!inReplay)
         this.viewmodel.update(t.realDt, this.player.mouseDx, this.player.mouseDy, this.player.planarSpeed, this.player.grounded);
-      const stride = inReplay ? this.replay?.current ? Math.hypot(this.replay.current.pos[0], this.replay.current.pos[2]) : 0 : this.player.stride;
+      const stride = inReplay ? this.replay?.current?.stride ?? 0 : this.player.stride;
       this.viewmodel.draw(this.renderer, this.meshes, eye, yaw, pitch, pState, stride, this.save.settings.reduceMotion);
     }
     this.updatePost(world, ts, t.realDt);

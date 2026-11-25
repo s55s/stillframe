@@ -7,7 +7,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 | # | Summary | Severity | Status |
 |---|---|---|---|
 | [BUG-001](#bug-001-time-never-slows-down) | Time never slows down: swapped arguments to `TimeScaleDriver.update` | Critical | Fixed |
-| [BUG-002](#bug-002-replay-hand-bob-uses-distance-from-the-origin) | Replay hand bob uses distance from the world origin instead of distance walked | Minor | Open |
+| [BUG-002](#bug-002-replay-hand-bob-uses-distance-from-the-origin) | Replay hand bob uses distance from the world origin instead of distance walked | Minor | Fixed |
 | [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Fixed |
 | [BUG-004](#bug-004-horizontal-mouse-look-is-reversed) | Horizontal mouse look is reversed: moving the mouse left turns right | Major | Fixed |
 
@@ -68,7 +68,7 @@ Better: change the signature to take a named object so the two speeds can't be s
 ## BUG-002: Replay hand bob uses distance from the origin
 
 - **Severity:** Minor (visual, replay only)
-- **Status:** Open
+- **Status:** Fixed in the commit "Fix BUG-002: replay hand bob follows distance walked"
 - **Found in:** `953aa7c`
 - **Where:** `index.html:7115`. After the move: `src/game/game.ts:453`
 
@@ -84,6 +84,12 @@ const stride = inReplay ? this.replay?.current ? Math.hypot(this.replay.current.
 
 ### Fix
 Accumulate distance walked during the replay: add the distance between consecutive replay frames' `pos`, the same way `PlayerController.update` does from velocity. Alternatively, record `stride` in each player frame (`toFrame`) and use the recorded value.
+
+**Applied** (the second option, recording `stride`). This gives exactly the same bob as live play, and it's one number per frame:
+- `PlayerFrame` has a new `stride` field (`src/sim/types.ts`), which `PlayerController.toFrame` fills in (`src/sim/player-controller.ts`).
+- In a replay, `Game.render` passes the current frame's recorded `stride` to the viewmodel (`src/game/game.ts`).
+- Added a test in `src/sim/player-controller.test.ts` that the frame carries the distance walked, not the distance from the origin.
+- **Not checked in a real replay:** making one means clearing a level, which needs mouse capture that the browser pane I test in can't provide.
 
 ---
 

@@ -117,6 +117,8 @@ export interface PlayerFrame {
   yaw: number;
   pitch: number;
   grounded: boolean;
+  /** Total distance walked so far (m). Drives the hand bob, live and in replays. */
+  stride: number;
   fire: boolean;
   throwItem: boolean;
   interact: boolean;
