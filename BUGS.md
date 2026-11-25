@@ -6,7 +6,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 
 | # | Summary | Severity | Status |
 |---|---|---|---|
-| [BUG-001](#bug-001-time-never-slows-down) | Time never slows down: swapped arguments to `TimeScaleDriver.update` | Critical | Open |
+| [BUG-001](#bug-001-time-never-slows-down) | Time never slows down: swapped arguments to `TimeScaleDriver.update` | Critical | Fixed |
 | [BUG-002](#bug-002-replay-hand-bob-uses-distance-from-the-origin) | Replay hand bob uses distance from the world origin instead of distance walked | Minor | Open |
 | [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Fixed |
 
@@ -17,7 +17,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 ## BUG-001: Time never slows down
 
 - **Severity:** Critical. It disables the game's core mechanic.
-- **Status:** Open
+- **Status:** Fixed in the commit "Fix BUG-001: time slows down again when standing still"
 - **Found in:** `953aa7c`
 - **Where:** `index.html:6998` (call site), `index.html:6177` (function). After the move: `src/game/game.ts:336`, `src/game/time-scale-driver.ts:19`
 
@@ -56,6 +56,11 @@ this.driver.update(dt, this.player.planarSpeed, WALK_SPEED, this.player.lookSpee
 ```
 
 Better: change the signature to take a named object so the two speeds can't be swapped again, and add a test that standing still gives `MIN` and walking at full speed gives about 1.
+
+**Applied** (the "better" version):
+- `TimeScaleDriver.update` now takes a `PlayerActivity` object with named fields (`src/game/time-scale-driver.ts`), and `Game.frame` passes `planarSpeed` and `maxSpeed` by name (`src/game/game.ts`). A zero `maxSpeed` now counts as no movement instead of dividing by zero.
+- Added `src/game/time-scale-driver.test.ts` (Vitest), with 7 tests: standing still gives `MIN`, full walking speed gives 1, half speed gives 0.5, time slows down again after stopping, turning the view gives at most 0.35, being airborne gives 0.8, and an action briefly gives full speed. The tests run in `npm test`, and `npm run build` now runs them before bundling.
+- **Not verified in-game:** the browser pane I test in can't capture the mouse, and the game pauses time without it. Check by playing: standing still should nearly freeze enemies and bullets and drain the colour.
 
 ---
 

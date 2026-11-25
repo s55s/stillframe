@@ -333,7 +333,14 @@ export class Game {
         if (acted)
           this.driver.actionKick();
         const busy = this.world.player.burstLeft > 0;
-        t.timeScale = this.driver.update(dt, WALK_SPEED, this.player.planarSpeed, this.player.lookSpeed, !this.player.grounded, busy);
+        t.timeScale = this.driver.update({
+          realDt: dt,
+          planarSpeed: this.player.planarSpeed,
+          maxSpeed: WALK_SPEED,
+          lookSpeed: this.player.lookSpeed,
+          airborne: !this.player.grounded,
+          busy
+        });
         this.runRealTime += dt;
         break;
       }
