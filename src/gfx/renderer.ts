@@ -35,7 +35,8 @@ export function defaultPostParams() {
     outline: 1,
     flash: [1, 1, 1, 0],
     threat: 0,
-    threatPulseRate: 1
+    /** Threat warning pulse speed, rad/s: 2π × 1.5 = 1.5 throbs per second. */
+    threatPulseRate: Math.PI * 2 * 1.5
   };
 }
 /** Size-dependent render targets and the bind groups that read them. Rebuilt on resize. */

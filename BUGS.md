@@ -11,6 +11,7 @@ Bugs found in STILLFRAME (`index.html`). Line numbers refer to `index.html` as o
 | [BUG-003](#bug-003-every-level-is-locked-on-a-fresh-save) | Every level is locked on a fresh save, so the game can't be started | Critical | Fixed |
 | [BUG-004](#bug-004-horizontal-mouse-look-is-reversed) | Horizontal mouse look is reversed: moving the mouse left turns right | Major | Fixed |
 | [BUG-005](#bug-005-film-grain-grows-into-screen-covering-noise) | Film grain grows into screen-covering noise, worst while time is frozen | Major | Fixed |
+| [BUG-006](#bug-006-threat-pulse-blacks-out-the-screen-for-seconds) | Threat warning blacks out the whole screen for seconds | Major | Fixed |
 
 > Since the move to Vite (PART 2), the code lives in `src/`. Each entry gives the original `index.html` line (commit `953aa7c`) and, where known, the new file and line.
 
@@ -200,3 +201,45 @@ When the player stops, dark areas fill with bright, fizzing speckle. After a few
 - The grain and aberration strengths are unchanged, so the intended frozen look stays.
 
 Checked in the browser: the shader compiles with no warnings, and the title screen (which uses the frozen look at 0.6 strength) shows fine, even grain in its dark areas. Not checked during a long play session, because playing needs mouse capture that the browser pane I test in can't provide.
+
+---
+
+## BUG-006: Threat pulse blacks out the screen for seconds
+
+- **Severity:** Major. While it's active you can't see the enemy that's about to shoot you.
+- **Status:** Fixed in the commit "Fix BUG-006: threat warning pulses the screen edges only"
+- **Found in:** `953aa7c` (reported by the user while playing)
+- **Where:** `Game.incomingThreat` and `Game.updatePost` (`index.html:7199`, `:7240`; after the move `src/game/game.ts:544`, `:585`) and the `final` shader (`index.html:1123–1125`; after the move `src/gfx/shaders/final.wgsl:64–66`)
+
+### What happens
+During play, the whole screen fades to black for about 1–3 seconds, then fades back. It happens whenever an enemy is about to shoot (a marksman's laser telegraph) or an enemy bullet comes within about 8 m of the player. The fades are gradual. This is a separate effect from the film grain in BUG-005.
+
+### Cause
+The game has a "threat" warning: `incomingThreat` returns 1 while any enemy is telegraphing or an enemy bullet is within 8 m (falling to 0 at 16 m). `updatePost` smooths it (rising in about 0.05 s, falling over about 2.5 s), and the final shader applies it:
+
+```wgsl
+let wave = sin(post.camera.z * post.danger.y);           // time × threatPulseRate
+let threatPulse = smoothstep(0.0, 0.3, abs(wave));
+mapped *= 1.0 - post.danger.x * threatPulse;              // danger.x = threat
+```
+
+Three things combine into a blackout:
+1. **It darkens the whole image, at full strength.** With a threat of 1, the multiplier reaches 0, so the screen is pure black, not a vignette or a tint.
+2. **The "pulse" rate is never set.** `threatPulseRate` keeps its default of 1 (rad/s), so the "pulse" is a 6.3-second sine wave: in practice a slow fade, not a pulse.
+3. **The smoothstep is "on" most of the time.** `smoothstep(0, 0.3, |sin|)` is 1 whenever `|sin| > 0.3`, which is 85% of each cycle.
+
+Emulated brightness at threat 1: 0% for stretches of about 2.7 s, with brief fades back to normal every 3.1 s. At threat 0.9 the minimum is 10%. Freezing time makes it worse, because a telegraph or a nearby bullet then lasts much longer in real time.
+
+### Intended or not?
+A threat warning is intended: it has its own uniform, its own smoothing, and the Reduce Motion setting turns it off. Blacking out the whole screen for seconds isn't. It hides exactly the danger it's warning about, and an unset pulse rate isn't a design choice.
+
+### Fix
+The options were an edge-only (vignette) pulse at a much lower strength with a real pulse rate, or removing it. The user chose the **edge-only pulse**.
+
+**Applied:**
+- `final.wgsl`: the warning now uses the same edge mask as the vignette, so the centre of the screen is never darkened. Its strength is capped at `THREAT_MAX_DARKEN = 0.5`, and it throbs smoothly between half and full of that strength.
+- `renderer.ts`: `threatPulseRate` defaults to 2π × 1.5 rad/s, which is 1.5 throbs per second, instead of 1 rad/s.
+
+Emulated brightness at full threat: the centre and the middle of the screen stay at 100%, the side edges throb between 78% and 89%, and the corners between 50% and 75%. The smoothing in `Game.updatePost` is unchanged, so the warning still fades in quickly and out over about 2.5 s, and Reduce Motion still turns it off.
+
+Checked: the shader compiles in the browser with no errors, and the type check, tests and build pass. Not checked on screen with a real threat, because triggering one needs play with mouse capture, which the browser pane I test in can't provide.

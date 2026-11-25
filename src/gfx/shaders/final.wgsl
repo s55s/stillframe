@@ -58,12 +58,17 @@ fn fsFinal(fin : FullOut) -> @location(0) vec4f {
 
   var mapped = aces(color);
 
-  let vig = 1.0 - post.fx.x * smoothstep(0.15, 0.7, radial * 1.6);
+  let edge = smoothstep(0.15, 0.7, radial * 1.6);
+  let vig = 1.0 - post.fx.x * edge;
   mapped *= vig;
 
-  let wave = sin(post.camera.z * post.danger.y);
-  let threatPulse = smoothstep(0.0, 0.3, abs(wave));
-  mapped *= 1.0 - post.danger.x * threatPulse;
+  // Threat warning (danger.x = threat 0..1, danger.y = pulse rate in rad/s): the screen
+  // edges throb darker while an enemy is aiming or a bullet is close. It only touches the
+  // edges and never goes past THREAT_MAX_DARKEN, so the centre of the view (where the
+  // danger is) always stays visible.
+  let THREAT_MAX_DARKEN = 0.5;
+  let pulse = 0.5 + 0.5 * sin(post.camera.z * post.danger.y);
+  mapped *= 1.0 - post.danger.x * edge * THREAT_MAX_DARKEN * (0.5 + 0.5 * pulse);
 
   var encoded = pow(clamp(mapped, vec3f(0.0), vec3f(1.0)), vec3f(1.0 / 2.2));
 
